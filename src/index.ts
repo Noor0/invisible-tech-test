@@ -35,7 +35,7 @@ const fetchWeather = (location: string): Promise<WeatherResponseData> => {
   return weatherFetcher
     .getWeather(location)
     .then((weather: WeatherResponseData) => {
-      console.log(weather.main.temp)
+      console.log(`${weather.main.temp}°C`)
       return weather
     })
     .catch((err: WeatherResponseData) => {
