@@ -4,9 +4,7 @@ import * as dotenv from 'dotenv'
 import {
   Arguments,
   WeatherResponseData,
-  WeatherErrorData,
   TimeResponseData,
-  TimeErrorData,
   LocationInfoMap,
 } from './types'
 import WeatherFetcher from './weather-fetcher'
@@ -14,41 +12,49 @@ import TimeFetcher from './time-fetcher'
 
 dotenv.config()
 
-const argv: Arguments = yargs.options({}).argv
-
 const weatherFetcher: WeatherFetcher = new WeatherFetcher()
 const timeFetcher: TimeFetcher = new TimeFetcher()
 
-const locations: string[] = argv._.join(' ')
+const argv: Arguments = yargs.options({}).argv
+const locations = argv._.join(' ')
   .split(',')
   .map(input => input.trim())
 
-const locationMap: LocationInfoMap = {}
+const main = async () => {
+  for (let location of locations) {
+    console.log('--------')
+    console.log(location)
+    const weather = await fetchWeather(location)
+    if (weather.coord) {
+      await fetchTime(weather.coord.lat, weather.coord.lon)
+    }
+  }
+}
 
-locations.forEach(async location => {
-  await weatherFetcher
+const fetchWeather = (location: string): Promise<WeatherResponseData> => {
+  return weatherFetcher
     .getWeather(location)
-    .then(
-      (weather: WeatherResponseData) => (locationMap[location] = { weather })
-    )
-    .catch(
-      (err: WeatherErrorData) => (locationMap[location] = { weather: err })
-    )
-  const {
-    weather: {
-      coord
-    },
-  } = locationMap[location]
+    .then((weather: WeatherResponseData) => {
+      console.log(weather.main.temp)
+      return weather
+    })
+    .catch((err: WeatherResponseData) => {
+      console.log(err.message)
+      return err
+    })
+}
 
-  await timeFetcher
-    .getTime(coord?.lon, coord?.lat)
-    .then(res => {
-      locationMap[location].time = res
+const fetchTime = (long: number, lat: number): Promise<TimeResponseData> => {
+  return timeFetcher
+    .getTime(long, lat)
+    .then(time => {
+      console.log(time.formatted.split(' ')[1])
+      return time
     })
     .catch(err => {
-      locationMap[location].time = err
+      console.log(err.message)
+      return err
     })
+}
 
-  const message: string = `${location}, ${locationMap[location].weather.main.temp}, ${locationMap[location].time.formatted}`
-  console.log(message)
-})
+main()
